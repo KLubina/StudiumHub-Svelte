@@ -6,41 +6,43 @@
   import TooltipPopover from '../lib/components/TooltipPopover.svelte';
   import WahlmodulDialog from '../lib/components/WahlmodulDialog.svelte';
 
-  // Import-Stylesheets (unverändert)
-  import '../assets/css/core/variables.css';
-  import '../assets/css/core/layout.css';
-  import '../assets/css/core/typography.css';
-  import '../assets/css/core/hub-button.css';
-  import '../assets/css/core/module.css';
-  import '../assets/css/core/legend.css';
-  import '../assets/css/optional/tooltip.css';
-  import '../assets/css/optional/kp-counter.css';
-  import '../assets/css/optional/indicators.css';
-  import '../assets/css/optional/wahlmodule.css';
+  // Props empfangen (Svelte 5 Syntax via $props)
+  let { key = 'eth-cs' } = $props<{ key: string }>();
 
-  let studiengangKey: string = '';
-  let isLoading: boolean = true;
-  let errorMsg: string = '';
+  let isLoading = $state(true);
+  let errorMsg = $state('');
 
-  let generalConfig: Record<string, any> = {};
-  let modulesData: Array<Record<string, any>> = [];
-  let colorConfig: Record<string, any> = {};
-  let moduleDetails: Record<string, any> = {};
+  let generalConfig = $state<Record<string, any>>({});
+  let modulesData = $state<Array<Record<string, any>>>([]);
+  let colorConfig = $state<Record<string, any>>({});
+  let moduleDetails = $state<Record<string, any>>({});
 
-  let selectedWahlmodule: Record<string, any[]> = {}; 
-  let activeTooltip: Record<string, any> | null = null;    
-  let activeWahlmodulDialog: Record<string, any> | null = null;  
+  let selectedWahlmodule = $state<Record<string, any[]>>({}); 
+  let activeTooltip = $state<Record<string, any> | null>(null);    
+  let activeWahlmodulDialog = $state<Record<string, any> | null>(null);  
 
-  onMount(async () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    studiengangKey = urlParams.get('studiengang') || 'eth-cs';
+  // Effekt triggert jedes Mal, wenn sich der `key` ändert!
+  $effect(() => {
+    if (key) {
+      loadStudiengangData(key);
+    }
+  });
+
+  async function loadStudiengangData(studiengangKey: string) {
+    isLoading = true;
+    errorMsg = '';
     
     document.body.setAttribute('data-studiengang', studiengangKey);
 
+    // UZH-Spezial-CSS bereinigen / hinzufügen
+    const existingUzh = document.getElementById('uzh-common-css');
+    if (existingUzh) existingUzh.remove();
+
     if (studiengangKey.startsWith('uzh-')) {
       const link = document.createElement('link');
+      link.id = 'uzh-common-css';
       link.rel = 'stylesheet';
-      link.href = `../program-specific/uzh-common/uzh-common.css`;
+      link.href = `/program-specific/uzh-common/uzh-common.css`; // Pfad korrigiert auf Root-Basis
       document.head.appendChild(link);
     }
 
@@ -65,51 +67,60 @@
       errorMsg = `Fehler beim Laden des Studiengangs: ${err?.message || 'Unbekannt'}`;
       isLoading = false;
     }
-  });
+  }
 
   function loadScript(src: string): Promise<void> {
     return new Promise((resolve, reject) => {
+      // Vorherigen gleichen Script-Tag löschen, um Re-Evaluation zu erzwingen
+      const oldScript = document.querySelector(`script[src="${src}"]`);
+      if (oldScript) oldScript.remove();
+
       const script = document.createElement('script');
       script.src = src;
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Script failed to load'));
+      script.onerror = () => reject(new Error(`Script failed to load: ${src}`));
       document.head.appendChild(script);
     });
   }
 
-  async function loadLegacyScripts(key: string) {
-    const basePath = `../program-specific/${key}`;
+  async function loadLegacyScripts(studiengangKey: string) {
+    // WICHTIG: Da Vite im Root '/' ausliefert, entfernen wir `../` und greifen direkt zu.
+    const basePath = `/program-specific/${studiengangKey}`;
     
     await loadScript(`${basePath}/standard-config/general-config.js`).catch(() => {});
     await loadScript(`${basePath}/standard-config/standardcategories-config.js`).catch(() => {});
     await loadScript(`${basePath}/data/basic-modules-data.js`);
     await loadScript(`${basePath}/data/basic-modules-details.js`).catch(() => {});
 
-    const colorsLink = document.createElement('link');
-    colorsLink.rel = 'stylesheet';
-    colorsLink.href = `${basePath}/standard-config/colors/colors.css`;
-    document.head.appendChild(colorsLink);
-
-    const classesLink = document.createElement('link');
-    classesLink.rel = 'stylesheet';
-    classesLink.href = `${basePath}/standard-config/colors/classes.css`;
-    document.head.appendChild(classesLink);
-
-    const layoutLink = document.createElement('link');
-    layoutLink.rel = 'stylesheet';
-    layoutLink.href = `${basePath}/individual/layout.css`;
-    document.head.appendChild(layoutLink);
+    // Stylesheets reaktiv austauschen
+    updateStyleLink('program-colors-css', `${basePath}/standard-config/colors/colors.css`);
+    updateStyleLink('program-classes-css', `${basePath}/standard-config/colors/classes.css`);
+    updateStyleLink('program-layout-css', `${basePath}/individual/layout.css`);
   }
 
-  $: allActiveModules = modulesData.flatMap(m => m?.isPlaceholder ? (selectedWahlmodule[m.name] || []) : [m]);
-  $: totalKP = allActiveModules.reduce((sum, m) => sum + (parseInt(m?.ects) || 0), 0);
+  function updateStyleLink(id: string, href: string) {
+    let link = document.getElementById(id) as HTMLLinkElement;
+    if (link) {
+      link.href = href;
+    } else {
+      link = document.createElement('link');
+      link.id = id;
+      link.rel = 'stylesheet';
+      link.href = href;
+      document.head.appendChild(link);
+    }
+  }
+
+  // Reaktive Berechnungen (Svelte 5 $derived Rune verwenden!)
+  let allActiveModules = $derived(modulesData.flatMap(m => m?.isPlaceholder ? (selectedWahlmodule[m.name] || []) : [m]));
+  let totalKP = $derived(allActiveModules.reduce((sum, m) => sum + (parseInt(m?.ects) || 0), 0));
 </script>
 
-<svelte:window on:click={() => activeTooltip = null} />
+<svelte:window onclick={() => activeTooltip = null} />
 
 {#if isLoading}
   <div class="loading" style="padding: 50px; text-align: center; font-size: 1.2rem;">
-    Lade spezifische Programmdaten via Svelte...
+    Lade spezifische Programmdaten für "{key}" via Svelte...
   </div>
 {:else if errorMsg}
   <div class="error" style="color: red; padding: 20px; text-align: center;">{errorMsg}</div>
@@ -135,7 +146,7 @@
 
 {#if activeWahlmodulDialog}
   <WahlmodulDialog 
-    studiengangKey={studiengangKey} 
+    studiengangKey={key} 
     dialogData={activeWahlmodulDialog} 
     bind:selectedWahlmodule
     on:close={() => activeWahlmodulDialog = null}
