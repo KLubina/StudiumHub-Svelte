@@ -5,19 +5,51 @@
   import Visualizations from './lib/Visualizations.svelte';
   import SpecificProgramView from './routes/SpecificProgramView.svelte';
 
-  // CSS-Imports (Pfade bei Bedarf an deine Struktur anpassen)
-  import './css/core/variables.css';
-  import './css/core/layout.css';
-  import './css/core/typography.css';
-  import './css/core/hub-button.css';
+  // ==========================================
+  // KORRIGIERTE CSS-IMPORTS AUS DEINEM BAUM
+  // ==========================================
+  
+  // 1. Aus dem Ordner: src/css/
+  import './css/main.css';
+  import './css/core/base.css';
+  import './css/components/filters.css';
+  import './css/components/floating-nav.css';
+  import './css/components/header.css';
+  import './css/components/sections.css';
+  import './css/components/studiengang-card.css';
+  import './css/components/utility.css';
+  import './css/components/visualization-cards.css';
+  import './css/responsive/responsive.css';
 
+  // 2. Aus dem Ordner: src/static/assets/css/core/
+  import './static/assets/css/core/variables.css';
+  import './static/assets/css/core/layout.css';
+  import './static/assets/css/core/typography.css';
+  import './static/assets/css/core/hub-button.css';
+  import './static/assets/css/core/legend.css';
+  import './static/assets/css/core/module.css';
+
+  // 3. Aus dem Ordner: src/static/assets/css/optional/
+  import './static/assets/css/optional/color-manager.css';
+  import './static/assets/css/optional/indicators.css';
+  import './static/assets/css/optional/kp-counter.css';
+  import './static/assets/css/optional/major-minor-selector.css';
+  import './static/assets/css/optional/module-clickable.css';
+  import './static/assets/css/optional/module-lists.css';
+  import './static/assets/css/optional/study-links.css';
+  import './static/assets/css/optional/tooltip.css';
+  import './static/assets/css/optional/wahlmodule.css';
+
+  // ==========================================
+  // STATE MANAGEMENT (Svelte 5)
+  // ==========================================
   /** @type {any[]} */
   let allData = $state([]);
   let currentView = $state('institution'); 
   let filters = $state({ type: '', institution: 'group_zurich', category: '' }); 
   let showMinors = $state(false);
   let isLoading = $state(true);
-  let errorMessage = $state(''); // Speichert Fehler für die Anzeige auf dem Bildschirm
+  let errorMessage = $state(''); // Für visuelles Feedback bei Fehlern
   
   let activeStudiengang = $state('');
 
@@ -62,7 +94,7 @@
   }
 
   onMount(async () => {
-    // Listen aller zu ladenden JSON-Dateien
+    // Listen entsprechen exakt deinen Dateinamen im public-Verzeichnis
     const uniFiles = [
       "universitaet-basel.json", 
       "universitaet-luzern.json", 
@@ -85,39 +117,36 @@
     ];
 
     try {
-      // Abgesicherte Fetch-Funktion mit HTTP-Statusprüfung
       const fetchJson = async (/** @type {string} */ url) => {
         const res = await fetch(url);
         if (!res.ok) {
-          throw new Error(`HTTP ${res.status} beim Laden von: ${url}`);
+          throw new Error(`HTTP-Fehler ${res.status} beim Laden von: ${url}`);
         }
         return res.json();
       };
 
-      // Erstelle alle Lade-Aufträge (Promises)
+      // Erstelle alle Lade-Anfragen parallel
       const uniPromises = uniFiles.map(f => fetchJson(`/all-swiss-studies-listed/uni/${f}`));
       const fhPromises = fhFiles.map(f => fetchJson(`/all-swiss-studies-listed/fh/${f}`));
       
-      // Warte parallel auf alle Dateien
       const unis = await Promise.all(uniPromises);
       const fhs = await Promise.all(fhPromises);
 
-      // Daten mappen und dem State übergeben
+      // Daten verarbeiten und speichern
       allData = [
         ...unis.map(d => normalizeInstitution(d, 'uni')),
         ...fhs.map(d => normalizeInstitution(d, 'fh'))
       ];
 
-      // Kurze Verzögerung, damit Stylesheets fertig verarbeitet werden können
-      // Verhindert den Fehler: "Layout was forced before the page was fully loaded"
+      // Verhindert das vorzeitige Erzwingen des Layouts im Browser
       setTimeout(() => {
         isLoading = false;
       }, 50);
 
     } catch (/** @type {any} */ err) {
-      console.error("Kritischer Fehler beim Laden der JSONs:", err);
-      errorMessage = err?.message || "Ein unbekannter Fehler ist beim Laden der Studiengangsdaten aufgetreten.";
-      isLoading = false; // Beendet das Laden, damit der Fehler angezeigt wird
+      console.error("Fehler beim Laden der Daten:", err);
+      errorMessage = err?.message || "Unbekannter Fehler beim Laden der JSON-Daten.";
+      isLoading = false;
     }
   });
 </script>
@@ -130,7 +159,7 @@
       <h3 style="margin-top: 0;">⚠️ Fehler beim Laden der Daten</h3>
       <p>{errorMessage}</p>
       <p style="font-size: 0.9em; color: #555;">
-        Hinweis: Überprüfe, ob der Ordner <code>all-swiss-studies-listed</code> exakt so in deinem <strong><code>public/</code></strong>-Verzeichnis liegt. Falls du die App im Browser geöffnet hast, drücke <strong>F12</strong> und schaue in die Registerkarte <strong>Netzwerk (Network)</strong> für Details.
+        Bitte öffne im Browser <strong>F12 -> Netzwerk (Network)</strong> und lade mit F5 neu, um zu sehen, welche Datei blockiert wird.
       </p>
     </div>
   {:else}
