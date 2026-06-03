@@ -2,13 +2,28 @@
   let { uni } = $props();
   let collapsed = $state(true); 
 
+  /** @param {string} text */
   function sanitizeId(text) {
     return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  }
+
+  /** @param {KeyboardEvent} e */
+  function handleKeyDown(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      collapsed = !collapsed;
+    }
   }
 </script>
 
 <div class="uni-section {collapsed ? 'collapsed' : ''}" id="section-{sanitizeId(uni.name)}">
-  <div class="uni-header" onclick={() => collapsed = !collapsed}>
+  <div 
+    class="uni-header" 
+    onclick={() => collapsed = !collapsed}
+    onkeydown={handleKeyDown}
+    role="button"
+    tabindex="0"
+  >
     <div>
       <div class="uni-title">{uni.name}</div>
       <div class="uni-website">
@@ -34,7 +49,9 @@
               </a>
             {/each}
           </div>
-        {/if} {#if cat.subcategories}
+        {/if}
+
+        {#if cat.subcategories}
           {#each cat.subcategories as sub}
             <div class="subcategory-section" style="margin-left: 15px; margin-top: 10px;">
               <div class="subcategory-title" style="font-weight: 600; color: #555;">{sub.name}</div>

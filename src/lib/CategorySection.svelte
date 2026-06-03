@@ -2,13 +2,28 @@
   let { category } = $props();
   let collapsed = $state(true);
 
+  /** @param {string} text */
   function sanitizeId(text) {
     return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  }
+
+  /** @param {KeyboardEvent} e */
+  function handleKeyDown(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      collapsed = !collapsed;
+    }
   }
 </script>
 
 <div class="uni-section {collapsed ? 'collapsed' : ''}" id="section-{sanitizeId(category.name)}">
-  <div class="uni-header" onclick={() => collapsed = !collapsed}>
+  <div 
+    class="uni-header" 
+    onclick={() => collapsed = !collapsed}
+    onkeydown={handleKeyDown}
+    role="button"
+    tabindex="0"
+  >
     <div>
       <div class="uni-title">{category.name}</div>
     </div>

@@ -1,10 +1,9 @@
 <script>
-  import { onMount } from 'svelte'; // Wichtig: In Svelte 5 heisst es "onMount", nicht "onMounted"!
+  import { onMount } from 'svelte';
   import FilterControls from './lib/FilterControls.svelte';
   import StudyContainer from './lib/StudyContainer.svelte';
   import Visualizations from './lib/Visualizations.svelte';
 
-  // HIER DEINE NEUE CSS-ORDNERSTRUKTUR IMPORTIEREN:
   import './css/core/base.css';
   import './css/main.css';
   import './css/components/header.css';
@@ -16,35 +15,38 @@
   import './css/components/utility.css';
   import './css/responsive/responsive.css';
 
+  /** @type {any[]} */
   let allData = $state([]);
   let currentView = $state('institution'); 
   let filters = $state({ type: '', institution: 'group_zurich', category: '' }); 
   let showMinors = $state(false);
   let isLoading = $state(true);
 
+  /**
+   * @param {any} raw
+   * @param {string} type
+   */
   function normalizeInstitution(raw, type) {
     return {
       name: raw.name,
       website: raw.website,
       type: type,
-      categories: (raw.kategorien || []).map(kat => ({
+      categories: (raw.kategorien || []).map((/** @type {any} */ kat) => ({
         name: kat.name,
-        subcategories: kat.unterkategorien?.map(uk => ({
+        subcategories: kat.unterkategorien?.map((/** @type {any} */ uk) => ({
           name: uk.name,
-          programs: uk.studiengaenge?.map(p => ({ ...p, description: p.beschreibung, degree: p.grad })) || []
+          programs: uk.studiengaenge?.map((/** @type {any} */ p) => ({ ...p, description: p.beschreibung, degree: p.grad })) || []
         })),
-        programs: kat.studiengaenge?.map(p => ({ ...p, description: p.beschreibung, degree: p.grad }))
+        programs: kat.studiengaenge?.map((/** @type {any} */ p) => ({ ...p, description: p.beschreibung, degree: p.grad }))
       }))
     };
   }
 
-  // Korrektur zu onMount (Svelte-Standard)
   onMount(async () => {
     const uniFiles = ["universitaet-basel.json", "universitaet-luzern.json", "universitaet-st-gallen.json", "universitaet-bern.json", "universitaet-freiburg.json", "eth-zuerich.json", "universitaet-zuerich.json"];
     const fhFiles = ["berner-fachhochschule.json", "fh-graubuenden.json", "fhnw.json", "ostschweizer-fachhochschule.json", "zhaw.json", "zhdk.json", "hslu.json", "ffhs.json"];
 
     try {
-      // Weil all-swiss-studies-listed im public-Ordner liegt, greifen wir mit einem führenden / darauf zu
       const uniPromises = uniFiles.map(f => fetch(`/all-swiss-studies-listed/uni/${f}`).then(r => r.json()));
       const fhPromises = fhFiles.map(f => fetch(`/all-swiss-studies-listed/fh/${f}`).then(r => r.json()));
       
