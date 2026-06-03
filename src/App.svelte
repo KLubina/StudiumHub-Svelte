@@ -1,89 +1,93 @@
 <script>
-  import svelteLogo from './assets/svelte.svg'
-  import viteLogo from './assets/vite.svg'
-  import heroImg from './assets/hero.png'
-  import Counter from './lib/Counter.svelte'
+  import { onMount } from 'svelte'; // Wichtig: In Svelte 5 heisst es "onMount", nicht "onMounted"!
+  import FilterControls from './lib/FilterControls.svelte';
+  import StudyContainer from './lib/StudyContainer.svelte';
+  import Visualizations from './lib/Visualizations.svelte';
+
+  // HIER DEINE NEUE CSS-ORDNERSTRUKTUR IMPORTIEREN:
+  import './css/core/base.css';
+  import './css/main.css';
+  import './css/components/header.css';
+  import './css/components/filters.css';
+  import './css/components/sections.css';
+  import './css/components/studiengang-card.css';
+  import './css/components/visualization-cards.css';
+  import './css/components/floating-nav.css';
+  import './css/components/utility.css';
+  import './css/responsive/responsive.css';
+
+  let allData = $state([]);
+  let currentView = $state('institution'); 
+  let filters = $state({ type: '', institution: 'group_zurich', category: '' }); 
+  let showMinors = $state(false);
+  let isLoading = $state(true);
+
+  function normalizeInstitution(raw, type) {
+    return {
+      name: raw.name,
+      website: raw.website,
+      type: type,
+      categories: (raw.kategorien || []).map(kat => ({
+        name: kat.name,
+        subcategories: kat.unterkategorien?.map(uk => ({
+          name: uk.name,
+          programs: uk.studiengaenge?.map(p => ({ ...p, description: p.beschreibung, degree: p.grad })) || []
+        })),
+        programs: kat.studiengaenge?.map(p => ({ ...p, description: p.beschreibung, degree: p.grad }))
+      }))
+    };
+  }
+
+  // Korrektur zu onMount (Svelte-Standard)
+  onMount(async () => {
+    const uniFiles = ["universitaet-basel.json", "universitaet-luzern.json", "universitaet-st-gallen.json", "universitaet-bern.json", "universitaet-freiburg.json", "eth-zuerich.json", "universitaet-zuerich.json"];
+    const fhFiles = ["berner-fachhochschule.json", "fh-graubuenden.json", "fhnw.json", "ostschweizer-fachhochschule.json", "zhaw.json", "zhdk.json", "hslu.json", "ffhs.json"];
+
+    try {
+      // Weil all-swiss-studies-listed im public-Ordner liegt, greifen wir mit einem führenden / darauf zu
+      const uniPromises = uniFiles.map(f => fetch(`/all-swiss-studies-listed/uni/${f}`).then(r => r.json()));
+      const fhPromises = fhFiles.map(f => fetch(`/all-swiss-studies-listed/fh/${f}`).then(r => r.json()));
+      
+      const unis = await Promise.all(uniPromises);
+      const fhs = await Promise.all(fhPromises);
+
+      allData = [
+        ...unis.map(d => normalizeInstitution(d, 'uni')),
+        ...fhs.map(d => normalizeInstitution(d, 'fh'))
+      ];
+    } catch (err) {
+      console.error("Fehler beim Laden der JSONs:", err);
+    } finally {
+      isLoading = false;
+    }
+  });
 </script>
 
-<section id="center">
-  <div class="hero">
-    <img src={heroImg} class="base" width="170" height="179" alt="" />
-    <img src={svelteLogo} class="framework" alt="Svelte logo" />
-    <img src={viteLogo} class="vite" alt="Vite logo" />
+<header>
+  <div class="container">
+    <h1>StudiumHub</h1>
+    <div class="subtitle">
+      <a href="https://www.swissuniversities.ch/themen/lehre-studium/akkreditierte-schweizer-hochschulen" target="_blank" rel="noopener noreferrer" style="color: white; font-size: 0.9rem;">
+        Alle akkreditierte Schweizer Hochschulen
+      </a>
+      <br>
+      <a href="https://www.berufsberatung.ch/dyn/show/8804" target="_blank" rel="noopener noreferrer" style="color: white; font-size: 0.9rem;">
+        Beschäftigungssituation 1 Jahr nach Abschluss
+      </a>
+    </div>
   </div>
-  <div>
-    <h1>Get started</h1>
-    <p>Edit <code>src/App.svelte</code> and save to test <code>HMR</code></p>
-  </div>
-  <Counter />
-</section>
+</header>
 
-<div class="ticks"></div>
+<div class="container">
+  <FilterControls bind:currentView bind:filters bind:showMinors {allData} />
 
-<section id="next-steps">
-  <div id="docs">
-    <svg class="icon" role="presentation" aria-hidden="true">
-      <use href="/icons.svg#documentation-icon"></use>
-    </svg>
-    <h2>Documentation</h2>
-    <p>Your questions, answered</p>
-    <ul>
-      <li>
-        <a href="https://vite.dev/" target="_blank" rel="noreferrer">
-          <img class="logo" src={viteLogo} alt="" />
-          Explore Vite
-        </a>
-      </li>
-      <li>
-        <a href="https://svelte.dev/" target="_blank" rel="noreferrer">
-          <img class="button-icon" src={svelteLogo} alt="" />
-          Learn more
-        </a>
-      </li>
-    </ul>
-  </div>
-  <div id="social">
-    <svg class="icon" role="presentation" aria-hidden="true">
-      <use href="/icons.svg#social-icon"></use>
-    </svg>
-    <h2>Connect with us</h2>
-    <p>Join the Vite community</p>
-    <ul>
-      <li>
-        <a href="https://github.com/vitejs/vite" target="_blank" rel="noreferrer">
-          <svg class="button-icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#github-icon"></use>
-          </svg>
-          GitHub
-        </a>
-      </li>
-      <li>
-        <a href="https://chat.vite.dev/" target="_blank" rel="noreferrer">
-          <svg class="button-icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#discord-icon"></use>
-          </svg>
-          Discord
-        </a>
-      </li>
-      <li>
-        <a href="https://x.com/vite_js" target="_blank" rel="noreferrer">
-          <svg class="button-icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#x-icon"></use>
-          </svg>
-          X.com
-        </a>
-      </li>
-      <li>
-        <a href="https://bsky.app/profile/vite.dev" target="_blank" rel="noreferrer">
-          <svg class="button-icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#bluesky-icon"></use>
-          </svg>
-          Bluesky
-        </a>
-      </li>
-    </ul>
-  </div>
-</section>
-
-<div class="ticks"></div>
-<section id="spacer"></section>
+  {#if isLoading}
+    <div class="no-results"><p>Lade Studiengänge...</p></div>
+  {:else}
+    {#if currentView === 'all_visualizations'}
+      <Visualizations />
+    {:else}
+      <StudyContainer {allData} {currentView} {filters} {showMinors} />
+    {/if}
+  {/if}
+</div>
