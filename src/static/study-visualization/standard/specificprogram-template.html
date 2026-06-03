@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Specificprogram</title>
+
+    <link rel="stylesheet" href="css/core/variables.css">
+    <link rel="stylesheet" href="css/core/layout.css">
+    <link rel="stylesheet" href="css/core/typography.css">
+
+    <link rel="stylesheet" href="css/core/hub-button.css">
+    <link rel="stylesheet" href="css/core/module.css">
+    <link rel="stylesheet" href="css/core/legend.css">
+
+    <link rel="stylesheet" href="css/optional/study-links.css">
+    <link rel="stylesheet" href="css/optional/tooltip.css">
+    <link rel="stylesheet" href="css/optional/kp-counter.css">
+    <link rel="stylesheet" href="css/optional/module-lists.css">
+    <link rel="stylesheet" href="css/optional/indicators.css">
+    <link rel="stylesheet" href="css/optional/major-minor-selector.css">
+    <link rel="stylesheet" href="css/optional/color-manager.css">
+    <link rel="stylesheet" href="css/optional/wahlmodule.css">
+
+    <link rel="stylesheet" id="uzh-common-css" href="">
+
+    <link rel="stylesheet" id="program-colors-css" href="">
+    <link rel="stylesheet" id="program-classes-css" href="">
+    <link rel="stylesheet" id="program-layout-css" href="">
+</head>
+
+<body data-studiengang="">
+    <div class="hub-button-container">
+        <a href="../../index.html" class="hub-button">← Zurück zum Hub</a>
+    </div>
+
+    <h1 id="specificprogram-title">Specificprogram</h1>
+    <h2 id="specificprogram-subtitle">mind. 180 KP insgesamt</h2>
+
+    <div id="major-minor-selector" class="major-minor-selector" style="display: none;"></div>
+
+    <div class="container">
+        <div class="specificprogram" id="specificprogram"></div>
+
+        <div class="farben-legende">
+            <div class="legende-titel" id="legende-titel">Farben-Legende</div>
+            <div id="legende"></div>
+        </div>
+    </div>
+
+    <div id="tooltip" class="tooltip-container" style="display: none;"></div>
+
+    <script src="js/specificprogram-loader.js"></script>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const studiengang = urlParams.get('studiengang') || 'eth-cs';
+
+        document.body.setAttribute('data-studiengang', studiengang);
+
+        const uzhCommonCSS = document.getElementById('uzh-common-css');
+        if (studiengang.startsWith('uzh-')) {
+            uzhCommonCSS.href = `../program-specific/uzh-common/uzh-common.css`;
+        }
+
+        const programColorsCSS = document.getElementById('program-colors-css');
+        const programClassesCSS = document.getElementById('program-classes-css');
+        const programLayoutCSS = document.getElementById('program-layout-css');
+
+        programColorsCSS.href = `../program-specific/${studiengang}/standard-config/colors/colors.css`;
+        programClassesCSS.href = `../program-specific/${studiengang}/standard-config/colors/classes.css`;
+        programLayoutCSS.href = `../program-specific/${studiengang}/individual/layout.css`;
+
+        programColorsCSS.onerror = () => {
+            console.log(`No colors.css found for ${studiengang}`);
+        };
+        programClassesCSS.onerror = () => {
+            console.log(`No classes.css found for ${studiengang}`);
+        };
+        programLayoutCSS.onerror = () => {
+            console.log(`No layout.css found for ${studiengang}`);
+        };
+
+        document.addEventListener('DOMContentLoaded', function () {
+            window.baseModulesReady.then(() => {
+                if (typeof window.loadStudiengangConfig === "function") {
+                    window.loadStudiengangConfig(studiengang);
+
+                    setTimeout(() => {
+                        const loadedTitle = window.StudiengangGeneralConfig?.title || document.getElementById('specificprogram-title')?.textContent;
+                        if (loadedTitle && loadedTitle !== "Specificprogram") {
+                            document.title = loadedTitle;
+                        }
+                    }, 50);
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
