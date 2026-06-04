@@ -133,20 +133,37 @@
 {:else if errorMsg}
     <div class="error" style="color: red; padding: 20px; text-align: center;">{errorMsg}</div>
 {:else}
-    <div class="container">
-        <ProgramHeader {generalConfig} />
+    <div class="specificprogram-container">
+        <div class="specificprogram-content">
+            <ProgramHeader {generalConfig} />
 
-        <ModuleGrid
-            modules={modulesData}
-            {selectedWahlmodule}
-            {moduleDetails}
-            {colorConfig}
-            bind:activeTooltip
-            bind:activeWahlmodulDialog
-        />
+            <ModuleGrid
+                modules={modulesData}
+                {selectedWahlmodule}
+                {moduleDetails}
+                {colorConfig}
+                bind:activeTooltip
+                bind:activeWahlmodulDialog
+            />
+        </div>
 
         <ColorLegend {colorConfig} {totalKP} {allActiveModules} />
     </div>
+
+<style>
+    .specificprogram-container {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 30px;
+        width: 100%;
+    }
+
+    .specificprogram-content {
+        flex: 1;
+        min-width: 0;
+    }
+</style>
 {/if}
 
 {#if activeTooltip}
