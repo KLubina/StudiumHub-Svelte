@@ -1,27 +1,25 @@
 // src/lib/utils/state.js
 
 /**
- * Normalisiert die Rohdaten einer Hochschule.
- * @param {any} raw - Die rohen JSON-Daten der Hochschule.
- * @param {string} type - Der Typ der Hochschule ('uni' oder 'fh').
- * @returns {any} Die normalisierte Hochschule.
+ * Normalizes raw institution data from JSON into a consistent shape.
+ * @param {any} raw
+ * @param {string} type
+ * @returns {any}
  */
 export function normalizeInstitution(raw, type) {
-  const rawCategories = raw.kategorien || [];
+  if (!raw) return { name: "Unbekannt", website: "", type, categories: [] };
+
   return {
     name: raw.name,
     website: raw.website,
-    type: type,
-    categories: rawCategories.map(
-      /** @param {any} kat */ (kat) => normalizeCategory(kat),
-    ),
+    type,
+    categories: (raw.kategorien || []).map(normalizeCategory),
   };
 }
 
 /**
- * Normalisiert eine einzelne Kategorie.
- * @param {any} kat - Die rohe Kategorie.
- * @returns {any} Die strukturierte Kategorie.
+ * @param {any} kat
+ * @returns {any}
  */
 function normalizeCategory(kat) {
   /** @type {any} */
@@ -29,21 +27,22 @@ function normalizeCategory(kat) {
 
   if (kat.unterkategorien) {
     category.subcategories = kat.unterkategorien.map(
-      /** @param {any} uk */ (uk) => ({
+      (/** @type {any} */ uk) => ({
         name: uk.name,
         programs: normalizePrograms(uk.studiengaenge),
       }),
     );
   }
+
   if (kat.studiengaenge) {
     category.programs = normalizePrograms(kat.studiengaenge);
   }
+
   return category;
 }
 
 /**
- * Normalisiert eine Liste von Studiengängen.
- * @param {any[]} [studiengaenge=[]] - Array von rohen Studiengängen.
+ * @param {any[]} [studiengaenge=[]]
  * @returns {any[]}
  */
 function normalizePrograms(studiengaenge = []) {
@@ -55,8 +54,8 @@ function normalizePrograms(studiengaenge = []) {
 }
 
 /**
- * Prüft, ob es sich bei dem Studiengang um ein Nebenfach (Minor) handelt.
- * @param {any} program - Das Studiengang-Objekt.
+ * Returns true if the program is a minor (at most 60 ECTS).
+ * @param {any} program
  * @returns {boolean}
  */
 export function isMinor(program) {
@@ -64,11 +63,8 @@ export function isMinor(program) {
   const numbers = ectsText.match(/\d+/g);
   if (!numbers) return false;
 
-  // Typisiert den Parameter 'n' innerhalb von map explizit als String/Nummer, um Fehler 7006 zu beheben
-  const parsedNumbers = numbers.map(
-    /** @param {string} n */ (n) => parseInt(n, 10),
+  const maxValue = Math.max(
+    ...numbers.map((/** @type {string} */ n) => parseInt(n, 10)),
   );
-  const maxValue = Math.max(...parsedNumbers);
-
   return maxValue <= 60;
 }
