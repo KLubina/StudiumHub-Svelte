@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
+    import { tick } from 'svelte';
     import ProgramHeader from './ProgramHeader.svelte';
     import ModuleGrid from './ModuleGrid.svelte';
     import ColorLegend from './ColorLegend.svelte';
@@ -21,12 +21,22 @@
     let activeWahlmodulDialog = $state<Record<string, any> | null>(null);
 
     $effect(() => {
-        if (key) loadStudiengangData(key);
+        const currentKey = key;
+        if (currentKey) loadStudiengangData(currentKey);
     });
 
     async function loadStudiengangData(studiengangKey: string) {
         isLoading = true;
         errorMsg  = '';
+
+        // Reset state before loading new program so stale data never shows
+        generalConfig  = {};
+        modulesData    = [];
+        colorConfig    = {};
+        moduleDetails  = {};
+        selectedWahlmodule = {};
+
+        await tick();
 
         document.body.setAttribute('data-studiengang', studiengangKey);
 
@@ -44,16 +54,21 @@
         try {
             await loadLegacyScripts(studiengangKey);
 
-            const globalWin   = window as any;
-            generalConfig     = globalWin.StudiengangGeneralConfig || { title: studiengangKey };
-            moduleDetails     = globalWin.StudiengangModuleDetails || {};
-            colorConfig       = globalWin.StudiengangCategoriesConfig || globalWin.CSEColorConfig || { kategorien: [] };
+            // Wait for Svelte to process before reading from window
+            await tick();
+
+            const globalWin = window as any;
+
+            generalConfig = { ...(globalWin.StudiengangGeneralConfig || { title: studiengangKey }) };
+            moduleDetails = { ...(globalWin.StudiengangModuleDetails || {}) };
+            colorConfig   = { ...(globalWin.StudiengangCategoriesConfig || globalWin.CSEColorConfig || { kategorien: [] }) };
 
             const dataKey = Object.keys(globalWin).find(k => k.endsWith('ModulesData') || k === 'StudiengangModules');
-            modulesData   = dataKey ? globalWin[dataKey] : [];
+            modulesData   = dataKey ? [...globalWin[dataKey]] : [];
 
             if (generalConfig?.title) document.title = generalConfig.title;
 
+            await tick();
             isLoading = false;
         } catch (err: any) {
             console.error(err);
@@ -67,10 +82,10 @@
             const oldScript = document.querySelector(`script[src="${src}"]`);
             if (oldScript) oldScript.remove();
 
-            const script    = document.createElement('script');
-            script.src      = src;
-            script.onload   = () => resolve();
-            script.onerror  = () => reject(new Error(`Script failed to load: ${src}`));
+            const script   = document.createElement('script');
+            script.src     = src;
+            script.onload  = () => resolve();
+            script.onerror = () => reject(new Error(`Script failed to load: ${src}`));
             document.head.appendChild(script);
         });
     }
@@ -113,7 +128,7 @@
 
 {#if isLoading}
     <div class="loading" style="padding: 50px; text-align: center; font-size: 1.2rem;">
-        Lade spezifische Programmdaten für "{key}" via Svelte...
+        Lade Programmdaten für "{key}"...
     </div>
 {:else if errorMsg}
     <div class="error" style="color: red; padding: 20px; text-align: center;">{errorMsg}</div>
@@ -125,6 +140,7 @@
             modules={modulesData}
             {selectedWahlmodule}
             {moduleDetails}
+            {colorConfig}
             bind:activeTooltip
             bind:activeWahlmodulDialog
         />
